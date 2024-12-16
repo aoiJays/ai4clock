@@ -19,7 +19,7 @@ candidate_points:
 
 # 扫描区域设置
 scan_zone:
-  center_point: [986, 365] # 环形区域中线上的一点，用于缩放椭圆
+  center_point: [986, 364] # 指针上的一点 作为环形扫描区域的中线点
   radius: 10                # 扫描区域半径
   angle: 15                 # 扫描区域扇形角度
   valid_threshold: 70       # 要求扇形区域至少包含了valid_threshold个像素点才能被统计
