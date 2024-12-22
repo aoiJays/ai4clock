@@ -20,7 +20,7 @@ candidate_points:
 # 扫描区域设置
 scan_zone:
   center_point: [970,362] # 指针上的一点 作为环形扫描区域的中线点
-  radius: 9                # 扫描区域半径
+  radius: 20                # 扫描区域半径
   angle: 10                # 扫描区域扇形角度
   valid_threshold: 70       # 要求扇形区域至少包含了valid_threshold个像素点才能被统计
 
