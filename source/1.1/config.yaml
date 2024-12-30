@@ -1,6 +1,6 @@
 # 图像路径配置
 image:
-  path: 'source/1.1/template2.jpg'
+  path: 'source/1.1/template3.jpg'
 
 # 模板刻度点集标注
 # 这些点用于表盘刻度区域的识别
