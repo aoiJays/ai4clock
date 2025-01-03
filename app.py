@@ -6,12 +6,10 @@ import numpy as np
 from scipy.optimize import least_squares
 import yaml
 import os
-from skimage import morphology
-from skimage.morphology import dilation, erosion, disk
+from skimage.morphology import dilation, erosion, disk, skeletonize
 from sklearn.cluster import KMeans
 import time
 from skimage.filters import median
-
 
 def load_specific_config(file_path):
     with open(file_path, 'r', encoding='utf-8') as file:
@@ -264,19 +262,29 @@ def crop_with_mask(img, mask, x0, y0, crop=True):
     return cropped_img, new_x0, new_y0
 
 
-def kmeans_binarization(gray_img):
+
+def kmeans_binarization(gray_img, mask):
     """
     对输入图像应用中值滤波去噪和K-means聚类进行二值化。
+    仅对 mask 为 True 的像素点进行处理。
+
+    参数:
+        gray_img (numpy.ndarray): 输入的灰度图像。
+        mask (numpy.ndarray): 布尔类型掩码，True 表示需要处理的像素，False 表示保留原始值。
+
     返回:
         numpy.ndarray: 二值化后的灰度图像。
     """
-    # 将图像重塑为二维数组，其中每一行都是一个像素
-    pixel_vals = gray_img.reshape((-1, 1))
+    # 确保 mask 和图像尺寸一致
+    assert gray_img.shape == mask.shape, "gray_img 和 mask 必须尺寸相同"
+
+    # 提取需要处理的像素
+    pixel_vals = gray_img[mask].reshape((-1, 1))
 
     # 转换为浮点数类型
     pixel_vals = np.float32(pixel_vals)
 
-    # 执行K-means聚类
+    # 执行 K-means 聚类
     kmeans = KMeans(n_clusters=2, random_state=0)  # 设置随机种子以获得可重复的结果
     labels = kmeans.fit_predict(pixel_vals)
 
@@ -286,19 +294,35 @@ def kmeans_binarization(gray_img):
 
     # 创建二值图像
     threshold_value = sorted_centroids.mean()  # 取两个质心的中间值作为阈值
-    binary_img = np.where(quantized < threshold_value, 255, 0).astype(np.uint8)
+    binary_vals = np.where(quantized < threshold_value, 255, 0).astype(np.uint8)
 
-    # 将图像恢复到原始尺寸
-    binary_img = binary_img.reshape(gray_img.shape)
+    # 创建与原图像同尺寸的二值图像
+    binary_img = gray_img.copy()
+    binary_img[mask] = binary_vals.flatten()  # 仅更新 mask 中的像素
 
     return binary_img
 
-def enhance_contrast_clahe(gray, clip_limit=4.0, tile_grid_size=(8, 8)):
-    # 创建CLAHE对象
-    clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=tile_grid_size)
-    # 应用CLAHE
-    enhanced = clahe.apply(gray)
-    return enhanced
+def enhance_contrast(gray_img, gamma=2.0):
+    """
+    增强灰度图像的暗部和亮部对比度。
+
+    参数:
+        gray_img (numpy.ndarray): 输入的灰度图像。
+        gamma (float): 非线性调整的Gamma值，默认值为2.0。
+                       大于1增强亮部，小于1增强暗部。
+
+    返回:
+        numpy.ndarray: 对比度增强后的图像。
+    """
+
+    # 线性拉伸对比度
+    min_val, max_val = np.min(gray_img), np.max(gray_img)
+    stretched_img = ((gray_img - min_val) / (max_val - min_val) * 255).astype(np.uint8)
+
+    # 非线性调整，增强对比
+    adjusted_img = np.power(stretched_img / 255.0, gamma) * 255
+    return stretched_img.astype(np.uint8)
+
 
 def convert_to_color_and_draw_lines(gray_image, zone_radius):
 
@@ -405,6 +429,35 @@ def draw_text(img, text):
     cv2.putText(img, text, position, font, scale, color, thickness, lineType=cv2.LINE_AA)
     return img
 
+def apply_gamma_correction(img, gamma=2.2):
+    """
+    应用伽马校正来调整图像亮度
+    """
+    # 创建伽马校正的映射表
+    inv_gamma = 1.0 / gamma
+    lookup_table = np.array([((i / 255.0) ** inv_gamma) * 255 for i in range(256)]).astype("uint8")
+
+    # 应用伽马校正
+    corrected_image = cv2.LUT(img, lookup_table)
+
+    return corrected_image
+
+def canny_edge_detection(img, low_threshold=50, high_threshold=150):
+    """
+    使用 Canny 算法检测边缘。
+
+    参数:
+    - img: 输入的灰度图像（numpy array）。
+    - low_threshold: Canny 算法的低阈值。
+    - high_threshold: Canny 算法的高阈值。
+
+    返回:
+    - 边缘图像（numpy array）。
+    """
+    # 使用Canny算法进行边缘检测
+    edges = cv2.Canny(img, low_threshold, high_threshold)
+    return edges
+
 def process_image(source_path, test_path, output_path):
 
     config_file_path = os.path.join(source_path, 'config.yaml')
@@ -483,42 +536,16 @@ def process_image(source_path, test_path, output_path):
 
     # 灰度图像增强对比度
     gray_img = cv2.cvtColor(work_img_with_masked, cv2.COLOR_BGR2GRAY)
-    gray_img = enhance_contrast_clahe(gray_img)
 
-    binary_img = kmeans_binarization(gray_img)
+    mask_inside = ~mask_in_ellipse(gray_img, a_res * s_l, b_res * s_l, x0, y0, alpha_res)
+    mask_outside = mask_in_ellipse(gray_img, a_res * s_r, b_res * s_r, x0, y0, alpha_res)
+    test_img = crop_with_mask(gray_img.copy(), mask_inside & mask_outside, x0, y0, crop=False)
 
-    selem = disk(3)
-    # 膨胀操作：扩展前景区域
-    dilated_img = dilation(binary_img, selem)
+    test_img = median(test_img, disk(3))
+    test_img = enhance_contrast(test_img)
 
-    # 腐蚀操作：收缩前景区域
-    eroded_img = erosion(dilated_img, selem)
-
-    eroded_img = median(eroded_img, selem)
-
-    # 骨架化处理
-    skeleton = morphology.skeletonize(eroded_img)
-    skeleton_image = (skeleton * 255).astype(np.uint8)
-
-    mask_inside = ~mask_in_ellipse(skeleton_image, a_res * s_l, b_res*s_l, x0, y0, alpha_res)
-    mask_outside = mask_in_ellipse(skeleton_image, a_res * s_r, b_res*s_r, x0, y0, alpha_res)
-    test_img = crop_with_mask(skeleton_image, mask_inside & mask_outside , x0, y0, crop=False)
-
-    hough_img, res_line = convert_to_color_and_draw_lines(test_img, zone_radius)
-
-    mask_pointer = np.zeros(eroded_img.shape, dtype=bool)
-    scan_zone_img = eroded_img.copy()
-
-    for line in res_line:
-        x1, y1, x2, y2 = line
-
-        min_x = min(x1, x2)
-        max_x = max(x1, x2)
-        min_y = min(y1, y2)
-        max_y = max(y1, y2)
-        mask_pointer[min_y:max_y+1, min_x:max_x+1] = True
-
-    scan_zone_img[~mask_pointer] = 0
+    binary_img = kmeans_binarization(test_img, mask_inside & mask_outside)
+    scan_zone_img = binary_img.copy()
 
     scan_debug_img = gray_img.copy()
     output_res, max_pixel_value_mean, res_mask = None, 0, None
@@ -592,6 +619,7 @@ def process_image(source_path, test_path, output_path):
         img2 = draw_text(img2, f'res = {output_res:.{PRESICISION}f}{UNIT}')
     else:
         print('failed')
+        exit(0)
         img2 = draw_text(img2, 'failed')
     save_cv_image_with_plt(img2, output_result_path)
 
