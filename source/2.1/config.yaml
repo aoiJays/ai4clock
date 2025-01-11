@@ -16,9 +16,9 @@ candidate_points:
 
 # 扫描区域设置
 scan_zone:
-  center_point: [688, 630] # 指针上的一点 作为环形扫描区域的中线点
-  radius: 20                # 扫描区域半径
-  angle: 15                 # 扫描区域扇形角度
+  center_point: [619, 622] # 指针上的一点 作为环形扫描区域的中线点
+  radius: 29                # 扫描区域半径
+  angle: 15                # 扫描区域扇形角度
   valid_threshold: 70       # 要求扇形区域至少包含了valid_threshold个像素点才能被统计
 
 # 表盘刻度设置

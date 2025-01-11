@@ -7,7 +7,7 @@
           <value>
             <JupyterConnectionParameters>
               <option name="managed" value="true" />
-              <option name="sdkName" value="ai4clock" />
+              <option name="sdkName" value="cv" />
             </JupyterConnectionParameters>
           </value>
         </entry>
