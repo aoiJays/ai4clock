@@ -1,9 +1,8 @@
 # 图像路径配置
-image:
-  path: 'source/1.3/template.jpg'
-
+template_path: 'source/1.3/template.jpg'
+precision: 2              # 显示精度（小数点后位数）
+unit: 'MPa'               # 单位
 # 模板刻度点集标注
-# 这些点用于表盘刻度区域的识别
 candidate_points:
   - [138, 578] # 刻度点1
   - [77, 441] # 刻度点1
@@ -16,18 +15,10 @@ candidate_points:
   - [701, 360] # 刻度点5
   - [675, 502] # 刻度点5
   - [588, 620] # 刻度点6
-
+candidate_points_value: [0.0, 2.5, 5, 7.5, 10, 12.5, 15, 17.5, 20, 22.5, 25]
 # 扫描区域设置
 scan_zone:
-  center_point: [264, 305] # 指针上的一点 作为环形扫描区域的中线点
+  center_point: [ 264, 305 ] # 指针上的一点 作为环形扫描区域的中线点
   radius: 145                # 扫描区域半径
-  angle: 3                 # 扫描区域扇形角度
-  valid_threshold: 70       # 要求扇形区域至少包含了valid_threshold个像素点才能被统计
+  angle: 3                # 扫描区域扇形角度
 
-# 表盘刻度设置
-scale:
-  step: 5              # 标注刻度之间未标注的刻度数量（估读刻度默认10）
-  start: 0              # 起始刻度值
-  end: 25                  # 终止刻度值
-  precision: 2              # 显示精度（小数点后位数）
-  unit: 'MPa'               # 单位
