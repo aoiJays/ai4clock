@@ -19,4 +19,4 @@ candidate_points_value: [0, 2, 4, 6, 8, 10, 12, 14, 16, 18]
 scan_zone:
   center_point: [191, 109] # 指针上的一点 作为环形扫描区域的中线点
   radius: 16                # 扫描区域半径
-  angle: 15                # 扫描区域扇形角度
+  width: 15                # 指针宽度（方便进行扫描）
