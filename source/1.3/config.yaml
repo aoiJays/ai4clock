@@ -18,7 +18,7 @@ candidate_points:
 candidate_points_value: [0.0, 2.5, 5, 7.5, 10, 12.5, 15, 17.5, 20, 22.5, 25]
 # 扫描区域设置
 scan_zone:
-  center_point: [ 264, 305 ] # 指针上的一点 作为环形扫描区域的中线点
-  radius: 145                # 扫描区域半径
-  width: 15                # 指针宽度（方便进行扫描）
-
+  center_point: [ 265, 308 ] # 指针上的一点 作为环形扫描区域的中线点
+  radius: 40                # 扫描区域半径
+  width: 7                # 指针宽度（方便进行扫描）
+  pointer_num: 1          # 指针数量
